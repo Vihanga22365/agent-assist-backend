@@ -241,3 +241,78 @@ def get_credit_card_late_fee_waive_off(user_identifier: str, last_4_digits: str)
     finally:
         if conn:
             conn.close()
+
+
+def get_credit_card_late_payment_details(user_identifier: str, last_4_digits: str) -> List[Dict[str, Any]]:
+    """
+    Retrieve credit card late fee payments for a specific user by ID or partial name,
+    optionally filtered by credit card last 4 digits.
+
+    Args:
+        user_identifier (str): The ID or partial name of the user to retrieve payment details for
+        last_4_digits (str): The last 4 digits of the credit card to filter by (empty string for all cards)
+
+    Returns:
+        List[Dict[str, Any]]: List of dictionaries containing late fee payment data. Keys include:
+        ID, UserID, CreditCardID, CreditCard, LatePaymentMonth, LatePaymentYear,
+        LatePaymentFee, MinimumPayment, DueDate. Returns an empty list if none are found.
+    """
+    try:
+        conn = sqlite3.connect("customer_data.db")
+        cursor = conn.cursor()
+
+        print("Connecting to the database to retrieve credit card late fee payment details...")
+        print(f"User Identifier: {user_identifier}")
+        if last_4_digits:
+            print(f"Credit Card Last 4 Digits: {last_4_digits}")
+        print("Executing query to fetch credit card late fee payments...")
+
+        base_query = """
+        SELECT lfp.ID, lfp.UserID, lfp.CreditCardID, cc.CreditCard,
+               lfp.latePaymentMonth, lfp.latePaymentYear, lfp.latePaymentFee,
+               lfp.minimumPayment, lfp.dueDate
+        FROM credit_card_late_fee_payment lfp
+        JOIN user u ON lfp.UserID = u.UserID
+        LEFT JOIN credit_card_details cc ON lfp.UserID = cc.UserID AND lfp.CreditCardID = cc.Last4Numbers
+        WHERE (lfp.UserID = ? OR u.Name LIKE ?)
+        """
+
+        params = [user_identifier, f"%{user_identifier}%"]
+
+        if last_4_digits:
+            base_query += " AND lfp.CreditCardID = ?"
+            params.append(last_4_digits)
+
+        base_query += "\n        ORDER BY lfp.latePaymentYear DESC, lfp.latePaymentMonth DESC, lfp.ID DESC\n        "
+
+        cursor.execute(base_query, tuple(params))
+        payments = cursor.fetchall()
+        
+        print("Credit Card Late Fee Payments:")
+        print(payments)
+        
+
+        if not payments:
+            return []
+
+        return [
+            {
+                'ID': payment[0],
+                'UserID': payment[1],
+                'CreditCardID': payment[2],
+                'CreditCard': payment[3],
+                'LatePaymentMonth': payment[4],
+                'LatePaymentYear': payment[5],
+                'LatePayment': payment[6],
+                'MinimumPayment': payment[7],
+                'DueDate': payment[8]
+            }
+            for payment in payments
+        ]
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
