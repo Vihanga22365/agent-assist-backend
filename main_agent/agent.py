@@ -8,7 +8,7 @@ from .tools  import get_basic_account_information, get_user_transactions, get_cr
 
 load_dotenv()
 
-os.environ['GOOGLE_API_KEY'] = os.getenv('GOOGLE_API_KEY')
+# os.environ['GOOGLE_API_KEY'] = os.getenv('GOOGLE_API_KEY')
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 dispute_agent = LlmAgent(
